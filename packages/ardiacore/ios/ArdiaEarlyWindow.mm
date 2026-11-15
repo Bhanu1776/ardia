@@ -29,9 +29,10 @@ constexpr double kClaimedSeconds = 5;
 
 constexpr double kUntakenAfterContentSeconds = 2;
 
-constexpr double kDefaultPageFrame = 9, kMaxPageFrame = 12, kCardRadius = 10;
+constexpr double kDefaultPageFrame = 9, kMaxPageFrame = 12;
 
 double PageFrameOf(NSDictionary *settings) {
+  if ([settings[@"borderlessMode"] isEqual:@YES]) return 0;
   id saved = settings[@"pageFrame"];
   if (![saved isKindOfClass:NSNumber.class]) return kDefaultPageFrame;
   const double frame = [saved doubleValue];
@@ -86,7 +87,7 @@ NSString *gLaunchURL;
 
 namespace {
 
-NSDictionary *gLittleLayout;
+NSMutableDictionary *gLittleLayout;
 
 NSString *const kLittleWindow = @"ardia.early.little-ardia";
 
@@ -235,11 +236,17 @@ ArdiaEarlyShown *ShownForWindow(NSWindow *window) {
   const NSRect rect = NSMakeRect(frame[0].doubleValue, frame[1].doubleValue, frame[2].doubleValue, frame[3].doubleValue);
   if (NSWidth(rect) < 300 || NSHeight(rect) < 200) return NO;
   NSWindow *window = [ArdiaChromeWindowHost makeWindowForProfile:profile ?: @""];
+  if (gLittleLayout) [ArdiaChromeWindowHost floatForWindowManagers:window];
   ArdiaWindowController *controller = [ArdiaWindowController forNSWindow:window];
   NSView *host = controller.coreWindow.hostView;
   if (!window || !host) {
     if (window) [ArdiaChromeWindowHost closeWindow:window];
     return NO;
+  }
+  if (gLittleLayout) {
+    NSArray<NSNumber *> *cardInsets = layout[@"card"];
+    const double inset = cardInsets.firstObject.doubleValue;
+    gLittleLayout[@"radius"] = @(inset == 0 ? 0 : MAX(ArdiaChromeWindowHost.windowCornerRadius - inset, 2));
   }
   controller.appWindowId = windowId;
   [window setFrame:rect display:NO];
@@ -322,6 +329,7 @@ ArdiaEarlyShown *ShownForWindow(NSWindow *window) {
     [CATransaction setDisableActions:YES];
     [page removeFromSuperview];
     page.frame = s.pageRect;
+    [tab noteInShownSlot];
     page.hidden = NO;
     [s.cover addSubview:page];
     [CATransaction commit];
@@ -346,11 +354,9 @@ ArdiaEarlyShown *ShownForWindow(NSWindow *window) {
   NSDictionary *main = windowId.length && [gLayouts[windowId] isKindOfClass:NSDictionary.class] ? gLayouts[windowId] : @{};
   const double pageFrame = PageFrameOf(settings);
   NSNumber *cardInset = @(pageFrame);
-  const CGFloat radius = round(kCardRadius * MIN(1.0, pageFrame / kDefaultPageFrame) * 2) / 2;
   NSMutableDictionary *layout = [@{
     @"page" : @[ cardInset, @38, cardInset, cardInset ],
     @"card" : @[ cardInset, @38, cardInset, cardInset ],
-    @"radius" : @(radius),
     @"curve" : [main[@"curve"] isKindOfClass:NSString.class] ? main[@"curve"] : kCACornerCurveCircular,
     @"lights" : @[ @20, @19 ],
   } mutableCopy];

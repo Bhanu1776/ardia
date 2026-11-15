@@ -13,7 +13,7 @@ import { Checkbox, Symbol, Text } from "../ui";
 import { capsule, space } from "../ui/tokens";
 import { ChoiceCard } from "./ChoiceCard";
 import { OptionCard } from "./OptionCard";
-import { confirmAnswer, recordDefaultBrowserTrial, setOnboardingDraft, setOnboardingExtras, skipStep, useOnboarding } from "../../state/onboarding/onboarding";
+import { confirmAnswer, confirmDefaultBrowserAnswer, recordDefaultBrowserTrial, setOnboardingDraft, setOnboardingExtras, skipStep, useOnboarding } from "../../state/onboarding/onboarding";
 import { ChoiceList, useMockFocus, type ChoiceOption } from "./ChoiceList";
 import { useOnboardingColors } from "./Parts";
 import { MockPanel, useScreen } from "./Screen";
@@ -35,10 +35,11 @@ export function HomeStep() {
 
 function DefaultBrowserQuestion() {
   const extras = useOnboarding((s) => s.extras);
+  const redo = useOnboarding((s) => s.redo);
   const [system, setSystem] = useState<SystemState | null>(null);
   const [busy, setBusy] = useState(false);
   const setDefault = extras.setDefault ?? !backgroundInstance;
-  const trial = extras.trial ?? false;
+  const trial = !redo && (extras.trial ?? false);
   const dock = extras.dock ?? true;
   const login = extras.login ?? system?.loginEnabled ?? false;
   const setExtras = setOnboardingExtras;
@@ -62,7 +63,7 @@ function DefaultBrowserQuestion() {
       if (dock && !system.inDock) await addToDock();
     } finally {
       setBusy(false);
-      confirmAnswer("default", {}, picked);
+      confirmDefaultBrowserAnswer(picked);
     }
   };
 
@@ -91,9 +92,9 @@ function DefaultBrowserQuestion() {
           subtitle={system?.isDefault ? "Ardia is already your default browser" : "Open links and web pages in Ardia"}
           selected={!!defaultOn}
           disabled={!system || system.isDefault}
-          onPress={() => setExtras(defaultOn ? { setDefault: false, trial: true } : { setDefault: true })}
+          onPress={() => setExtras(defaultOn ? { setDefault: false, trial: !redo } : { setDefault: true })}
         />
-        {system && !defaultOn ? (
+        {system && !defaultOn && !redo ? (
           <OptionCard control="check" icon="calendar" title="Try it for seven days" subtitle="We'll check in to make sure you love it." selected={trial} onPress={() => setExtras({ trial: !trial })} />
         ) : null}
         {system && !system.inDock ? (

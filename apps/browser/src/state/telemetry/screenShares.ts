@@ -1,4 +1,4 @@
-import type { PageState } from "../tabs/pageState";
+import { usePages, type PageState } from "../tabs/pageState";
 import { capture, isSharing, useTelemetry } from "./client";
 
 const ANSWER_MATCH_MS = 15_000;
@@ -63,7 +63,7 @@ export function endRunningScreenShares(now = Date.now()) {
   running = new Map();
 }
 
-export function resumeScreenShares(pages: SharePages, now = Date.now()) {
+export function resumeScreenShares(pages: SharePages = usePages.getState().pages, now = Date.now()) {
   const ended = endedByQuit;
   endedByQuit = new Map();
   quitting = false;
@@ -81,3 +81,5 @@ export function screenSharePages(pages: SharePages, previous: SharePages, now = 
   for (const id in pages) if (pages[id]?.mediaAccess?.screen && !previous[id]?.mediaAccess?.screen) noteScreenAccess(id, true, now);
   for (const id in previous) if (previous[id]?.mediaAccess?.screen && !pages[id]?.mediaAccess?.screen) noteScreenAccess(id, false, now);
 }
+
+export const watchScreenShares = () => usePages.subscribe((s, prev) => screenSharePages(s.pages, prev.pages));

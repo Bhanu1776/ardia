@@ -3,7 +3,7 @@ import { useBrowser } from "../browser/store";
 import { activeTabId } from "../browser/model";
 import { expectFocus, heroBarFocus } from "../focus/focusClaims";
 import { webviews } from "../../platform/webviews";
-import { commandBarCentred } from "../windows/layout";
+import { clickBarPlacement } from "./barPlacement";
 
 export type BarSnapshot = {
   typed: string;
@@ -41,10 +41,13 @@ export function focusHeroBar(windowId: string, tabId: string | undefined): boole
   return true;
 }
 
-export function openEmptySidebarField(windowId: string) {
+export function openBarFromAddress(windowId: string, text: string) {
   const s = useBrowser.getState();
-  if (commandBarCentred(s, windowId) && focusHeroBar(windowId, activeTabId(s, windowId))) return;
-  s.openPanel(windowId, "");
+  s.openPanel(windowId, text, undefined, clickBarPlacement(s, windowId));
+}
+
+export function openEmptySidebarField(windowId: string) {
+  openBarFromAddress(windowId, "");
 }
 
 export type BarDismissal = "escape" | "closeKey";

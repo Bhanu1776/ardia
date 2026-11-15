@@ -27,9 +27,11 @@ export const Symbol = requireNativeViewManager<SymbolProps>("ArdiaSymbol");
 export type FadeLabelProps = ViewProps & {
   text: string;
   fontSize?: number;
-  weight?: "light" | "regular" | "medium" | "semibold" | "bold";
+  weight?: "ultraLight" | "thin" | "light" | "regular" | "medium" | "semibold" | "bold" | "heavy" | "black";
+  fontFamily?: string;
   color?: string;
   fadeWidth?: number;
+  strikethrough?: boolean;
 };
 
 export const FadeLabel = requireNativeViewManager<FadeLabelProps>("ArdiaFadeLabel");
@@ -51,6 +53,10 @@ export function ContextMenuArea(props: ContextMenuAreaProps) {
 
 export type SurfaceProps = ViewProps & {
   fill?: string;
+  fillColors?: string[];
+  fillStops?: number[];
+  fade?: number[];
+  fadeStops?: number[];
   cornerRadius?: number;
   borderColor?: string;
   borderWidth?: number;
@@ -162,6 +168,7 @@ export type DockSelectionProps = ViewProps & {
   dark: boolean;
   glass?: boolean;
   colorRing?: boolean;
+  outline?: boolean;
 };
 
 export const DockSelection = requireNativeViewManager<DockSelectionProps>("ArdiaDockSelection");

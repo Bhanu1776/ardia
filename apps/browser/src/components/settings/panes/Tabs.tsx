@@ -2,8 +2,8 @@ import { useState } from "react";
 import { View } from "react-native";
 import { useTheme } from "../../ui/theme";
 import { useSettings, useTabLayout } from "../../../state/browser/hooks";
-import { chooseAutoHideTabs, chooseSidebarSide, chooseTabLayout, updateSettings } from "../../../state/settings/actions";
-import { splitLinkModifierOf, type PeekModifier, type Settings, type SplitLinkModifier } from "../../../state/settings/settings";
+import { chooseSidebarSide, chooseTabLayout, updateSettings } from "../../../state/settings/actions";
+import { customNewTabUrl, splitLinkModifierOf, type PeekButtons, type PeekModifier, type Settings, type SplitLinkModifier } from "../../../state/settings/settings";
 import { Box, Button, Checkbox, DialogActions, DialogTitle, PopUp, Segmented, Sheet, space, Text, TextField, Toggle, type Option, type SegmentOption } from "../../ui";
 import { durationMinutes, durationParts, type DurationUnit } from "../../../lib/time";
 import { cleanUpChoices, CUSTOM_CLEAN_UP, DAILY_CLEAN_UP_MINUTES } from "../../../state/settings/cleanUpAfter";
@@ -18,6 +18,12 @@ const PEEK_WITH: { value: PeekModifier; title: string }[] = [
   { value: "shift", title: "⇧-click" },
   { value: "alt", title: "⌥-click" },
   { value: "off", title: "Off" },
+];
+
+const PEEK_BUTTONS: { value: PeekButtons; title: string }[] = [
+  { value: "top", title: "In the title bar" },
+  { value: "left", title: "On the left" },
+  { value: "right", title: "On the right" },
 ];
 
 const SPLIT_WITH: { value: SplitLinkModifier; title: string }[] = [
@@ -37,6 +43,7 @@ function LinkKeys() {
   const peekWith = useSettings((s) => s.peekModifier);
   const splitWith = useSettings(splitLinkModifierOf);
   const newTabLinks = useSettings((s) => s.newTabLinksOpenIn);
+  const peekButtons = useSettings((s) => s.peekButtons);
   const peekOptions = PEEK_WITH.map((o) => (o.value === "alt" && splitWith === "alt" ? { ...o, title: "⌥-click (split view moves to ⌥⇧-click)" } : o));
   const splitOptions = SPLIT_WITH.map((o) => (o.value === "alt" && peekWith === "alt" ? { ...o, title: "⌥-click (Peek moves to ⇧-click)" } : o));
   return (
@@ -44,6 +51,9 @@ function LinkKeys() {
       <SettingToggle anchor="tabs.peekLinksToOtherSites" />
       <Row anchor="tabs.newTabLinksOpenIn">
         <PopUp value={newTabLinks} options={NEW_TAB_LINKS} onChange={(newTabLinksOpenIn) => updateSettings({ newTabLinksOpenIn })} />
+      </Row>
+      <Row anchor="tabs.peekButtons">
+        <PopUp value={peekButtons} options={PEEK_BUTTONS} onChange={(peekButtons) => updateSettings({ peekButtons })} />
       </Row>
       <Row anchor="tabs.peekModifier" description={withNote("tabs.peekModifier", splitWith === "alt" ? "⌥-click opens a split now: choosing it here moves split view back to ⌥⇧-click." : null)}>
         <PopUp value={peekWith} options={peekOptions} onChange={(peekModifier) => updateSettings({ peekModifier })} />
@@ -83,18 +93,29 @@ const DURATION_UNITS: Option<DurationUnit>[] = [
   { value: "days", title: "Days" },
 ];
 
-function AutoHideTabsRow({ top }: { top: boolean }) {
-  const on = useSettings((s) => s.autoHideTabs);
-  const edge = top ? "top edge" : "edge";
+function NewTabUrlRow() {
+  const saved = useSettings((s) => s.newTabUrl);
+  const [draft, setDraft] = useState(saved);
+  const [editedFrom, setEditedFrom] = useState(saved);
+  if (editedFrom !== saved) {
+    setEditedFrom(saved);
+    setDraft(saved);
+  }
+  const invalid = !!draft.trim() && !customNewTabUrl({ newTabOpens: "page", minimalismMode: false, newTabUrl: draft });
+  const save = () => {
+    const value = draft.trim();
+    if (value !== saved) updateSettings({ newTabUrl: value });
+  };
   return (
-    <Row anchor="tabs.autoHideTabs" description={`The tabs slide out of view and come back when you move the pointer to the window's ${edge}. ⌘S turns it on or off from any window.`}>
-      <Toggle value={on} accessibilityLabel={setting("tabs.autoHideTabs").title} onChange={chooseAutoHideTabs} />
+    <Row anchor="tabs.newTabUrl">
+      <TextField value={draft} onChangeText={setDraft} placeholder="New Tab page" onSubmit={save} onBlur={save} invalid={invalid} width={220} />
     </Row>
   );
 }
 
 export function TabsPane() {
   const newTabOpens = useSettings((s) => s.newTabOpens);
+  const minimal = useSettings((s) => s.minimalismMode);
   const newTabPosition = useSettings((s) => s.newTabPosition);
   const newTabButtonPosition = useSettings((s) => s.newTabButtonPosition);
   const cleanUpMinutes = useSettings((s) => s.cleanUpInactiveTabsAfterMinutes);
@@ -110,23 +131,37 @@ export function TabsPane() {
           <LayoutChoice layout="top" title="Tab layout across the top of the window" selected={top} />
         </Box>
         <Group>
-        <AutoHideTabsRow top={top} />
+          <SettingToggle
+            anchor="tabs.autoHideTabs"
+            description={`In every window, the tabs slide out of view and come back when you move the pointer to the window's ${top ? "top edge" : "edge"}. Changing it here resets every window; ⌘S and View › Auto-Hide Tabs hide or show the tabs in one window only.`}
+          />
+          <SettingToggle
+            anchor="tabs.revealTabsOnHover"
+            description={`With Auto-hide tabs on, the tabs slide back over the page while the pointer is at the window's ${top ? "top edge" : "edge"}. Off, they come back only with ⌘S or View › Auto-Hide Tabs.`}
+          />
         <Row anchor="tabs.sidebarSide">
           <Segmented options={SIDEBAR_SIDES} value={sidebarSide} onChange={chooseSidebarSide} />
         </Row>
         <SettingToggle anchor="tabs.hideToolbarWhileScrolling" />
         <SettingToggle anchor="tabs.showSidebarButton" />
         <SettingToggle anchor="tabs.showClearButton" />
+        <SettingToggle anchor="tabs.tidyTabs" />
         <SettingToggle anchor="tabs.balancedTopApps" />
+        <SettingToggle anchor="tabs.showUnreadCounts" />
+        <SettingToggle anchor="tabs.showTopAppBadges" />
+        <SettingToggle anchor="tabs.showTabHoverMenu" />
+        <SettingToggle anchor="tabs.closedTopAppTiles" />
         <SettingToggle anchor="tabs.fadeUnloadedTabs" />
+        <SettingToggle anchor="tabs.strikeSleepingTabs" />
         </Group>
       </Box>
 
       <SectionHeader title="General" />
       <Group>
-        <Row anchor="tabs.newTabOpens">
+        <Row anchor="tabs.newTabOpens" description={minimal ? "Minimalism mode opens the command bar. Your choice here comes back when you turn it off." : undefined}>
           <PopUp
-            value={newTabOpens}
+            value={minimal ? "commandBar" : newTabOpens}
+            disabled={minimal}
             options={[
               { value: "page", title: "New Tab Page" },
               { value: "commandBar", title: "Command Bar" },
@@ -135,12 +170,15 @@ export function TabsPane() {
             minWidth={160}
           />
         </Row>
+        <SettingToggle anchor="tabs.reuseEmptyNewTab" />
+        <NewTabUrlRow />
         <Row anchor="tabs.newTabPosition">
           <PopUp value={newTabPosition} options={top ? NEW_TABS_ACROSS : NEW_TABS_DOWN} onChange={(v) => updateSettings({ newTabPosition: v })} minWidth={190} />
         </Row>
         <Row anchor="tabs.newTabButtonPosition">
           <PopUp value={newTabButtonPosition} options={NEW_TAB_BUTTON} onChange={(v) => updateSettings({ newTabButtonPosition: v })} minWidth={190} />
         </Row>
+        <SettingToggle anchor="tabs.appLinksFirst" />
         <SettingToggle anchor="tabs.shareTabsAcrossWindows" />
         <SettingToggle anchor="tabs.warnBeforeClosingLastTab" />
         <SettingToggle anchor="tabs.tabReorderHaptics" />
@@ -183,6 +221,7 @@ function CleanUpRow({ minutes }: { minutes: number | null }) {
           onChange={(v) => (v === CUSTOM_CLEAN_UP ? showSettingsSheet(<CustomCleanUpSheet minutes={shown} />) : updateSettings({ cleanUpInactiveTabsAfterMinutes: Number(v) }))}
         />
       </Row>
+      <SettingToggle anchor="tabs.suggestCleanUp" />
     </Group>
   );
 }

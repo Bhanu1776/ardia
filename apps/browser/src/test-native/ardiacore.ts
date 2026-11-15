@@ -4,10 +4,12 @@ import type {
   CallArgs,
   CallName,
   CallResult,
+  ChromeWindowState,
   CliControlStatus,
   CliTabTarget,
   EngineBookmark,
   EngineEvents,
+  EngineTask,
   EventName,
   HistoryChange,
   HistoryChangedBatch,
@@ -36,7 +38,11 @@ const testGlobals = globalThis as {
   acTestCliControl?: (on: boolean | null) => Promise<CliControlStatus> | undefined;
   acTestCliActive?: (tabId: string | null) => Promise<CliControlStatus> | undefined;
   acTestCliTargets?: (tabId: string) => CliTabTarget | undefined;
+  acTestCliOwns?: (tabId: string) => { owned: boolean; shown: boolean };
+  acTestCliMoveOffscreen?: (tabId: string) => { ok: boolean; reason?: string };
+  acTestTasks?: () => EngineTask[];
   acTestUserScripts?: { engine: ExtensionEngine };
+  acTestSuggest?: (args: { url: string; id: number; profile: string }) => CallResult<"search.suggest"> | undefined;
 };
 
 type VerbOf<D extends string, N extends string = CallName> = N extends `${D}.${infer V}` ? V : never;
@@ -56,8 +62,10 @@ export const emitEvent = <E extends EventName>(name: E, data: EngineEvents[E]) =
   eventsOf(domain).emit(domain, { name, data });
 };
 
+export const chromeWindowList: ChromeWindowState[] = [];
 export const engineCalls: { domain: string; verb: string; profile: string }[] = [];
 export const loadedEngineProfiles = new Set<string>([""]);
+export const idleProfileUnloads = new Map<string, { status: "released" | "pending" | "busy"; tabs: string[] }>();
 export const profilesLoadedCall = { known: true };
 
 function domain<D extends string, Sync extends object>(name: D, handlers: Handlers<D>, sync?: Sync): FakeDomain & Sync {
@@ -304,7 +312,7 @@ const fakeModules = {
     "engine",
     {
       components: () => [],
-      tasks: () => [],
+      tasks: () => testGlobals.acTestTasks?.() ?? [],
       beginTracing: () => false,
       endTracing: () => null,
       isTracing: () => false,
@@ -315,6 +323,9 @@ const fakeModules = {
       cliControlStatus: () => cliControl(null),
       setCliControl: ({ on }) => cliControl(on),
       setCliActiveTab: ({ tabId }) => testGlobals.acTestCliActive?.(tabId) ?? cliStatus(null),
+      cliOwnsTab: ({ tabId }) => testGlobals.acTestCliOwns?.(tabId) ?? { owned: false, shown: false },
+      cliMoveOffscreen: ({ tabId }) => testGlobals.acTestCliMoveOffscreen?.(tabId) ?? { ok: false },
+      cliCloseOffscreenTabs: () => null,
       cliTabTargets: ({ tabIds }) => Object.fromEntries(tabIds.map((id) => [id, testGlobals.acTestCliTargets?.(id) ?? { targetId: null, pageGeneration: 0 }])),
     },
     { inputIdleSeconds: () => 3600 },
@@ -337,7 +348,7 @@ const fakeModules = {
       discardOffered: async (adoptId: string) => (discardedOffers.push(adoptId), true),
     },
   )),
-  ArdiaWindows: domain("windows", { list: () => [], dev: () => "" }),
+  ArdiaWindows: domain("windows", { list: () => chromeWindowList, dev: () => "" }),
   ArdiaDownloads: domain("downloads", {
     cancel: ({ id }) => (cancelledDownloads.push(id), null),
     pause: () => null,
@@ -358,6 +369,11 @@ const fakeModules = {
       return { profiles: [...loadedEngineProfiles] };
     },
     release: () => null,
+    unloadIdle: ({ profile }) => {
+      const unload = idleProfileUnloads.get(profile) ?? { status: "busy" as const, tabs: [] };
+      if (unload.status !== "busy") loadedEngineProfiles.delete(profile);
+      return unload;
+    },
     deleteData: ({ profile }) => (deletedProfileData.push(profile), { remaining: profileDataLeft.get(profile) ?? [] }),
     clearBrowsingData: () => null,
   }),
@@ -445,7 +461,12 @@ const fakeModules = {
     syncState: () => ({ ready: false, extensions: [], pending: [], settling: [], queued: [], intents: [] }),
     syncApply: () => ({ state: "pending" }),
   }),
-  ArdiaSearch: domain("search", { engines: () => ({ list: { engines: [] } }), setEngineName: () => null }),
+  ArdiaSearch: domain("search", {
+    engines: () => ({ list: { engines: [] } }),
+    setEngineName: () => null,
+    suggest: (args) => testGlobals.acTestSuggest?.(args) ?? { status: 200, body: JSON.stringify([args.url, []]) },
+    stopSuggest: () => null,
+  }),
   ArdiaMedia: domain("media", {
     displayMediaSources: () => [],
     selectDevice: () => null,
@@ -464,6 +485,8 @@ const fakeModules = {
   ArdiaContentBlocker: domain("contentBlocker", {
     setEnabled: () => null,
     setListEnabled: () => null,
+    addList: ({ url }) => ({ id: url, custom: true, existed: false, filters: 1, failed: false }),
+    removeList: () => null,
     isAllowed: () => false,
     setAllowed: () => null,
   }),
@@ -490,6 +513,8 @@ const fakeModules = {
     setSplitLinkModifier: () => null,
     setPeekOtherSiteTabs: () => null,
     setSelectionPopover: () => null,
+    setBlockAutoplayEverywhere: () => null,
+    setFairPlayInChromium: () => null,
     setCommandScrollZoom: () => null,
     setLittleArdiaOpensNewTabLinks: () => null,
     setAutoPictureInPicture: () => null,

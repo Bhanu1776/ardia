@@ -2,10 +2,11 @@ import { confirm } from "../../platform/dialogs";
 import { onWindowEvent } from "../../platform/windows";
 import { useBrowser } from "../browser/store";
 import { inPinnedContainer, plural, profileFor } from "../browser/model";
-import { tabsClosedWithWindow } from "../tabs/tabShare";
+import { tabsLostWithWindow } from "../tabs/sharedWindowClose";
 import { isLastRegularWindow, isOpenRegularWindow, isSmall } from "./small";
 import { closeLittleArdia } from "../littleArdia/actions";
 import { closeWindowAnimated } from "./closeAnimated";
+import { isEmptyCardTab } from "../omnibox/newTabBarPolicy";
 
 const MIN_TABS = 2;
 
@@ -30,7 +31,7 @@ async function requestClose(windowId: string) {
     if (!now.windows[windowId]) return;
     last = isLastRegularWindow(now, windowId);
     if (last) break;
-    const closing = tabsClosedWithWindow(now, windowId, isOpenRegularWindow).map((t) => t.id);
+    const closing = tabsLostWithWindow(now, windowId, isOpenRegularWindow).map((t) => t.id);
     if (!now.settings.warnBeforeClosingWindow || closing.length < MIN_TABS || closing.every((id) => asked.has(id))) break;
     const { confirmed, suppressed } = await confirm({ ...closeWindowDialog(windowId, closing), suppression: "Don’t ask me again", windowId });
     if (suppressed) useBrowser.getState().updateSettings({ warnBeforeClosingWindow: false });
@@ -40,12 +41,12 @@ async function requestClose(windowId: string) {
   closeWindowAnimated(windowId, { keepsLastWindow: last });
 }
 
-const unpinnedTabIds = (windowId: string) => {
+export const unpinnedOpenTabIds = (windowId: string) => {
   const s = useBrowser.getState();
-  return (s.windows[windowId]?.tabIds ?? []).filter((id) => !inPinnedContainer(s, id));
+  return (s.windows[windowId]?.tabIds ?? []).filter((id) => !inPinnedContainer(s, id) && !isEmptyCardTab(s, s.tabs[id]));
 };
 
-export function closeWindowDialog(windowId: string, closing = unpinnedTabIds(windowId)) {
+export function closeWindowDialog(windowId: string, closing = unpinnedOpenTabIds(windowId)) {
   const s = useBrowser.getState();
   const w = s.windows[windowId]!;
   const tabs = (n: number) => plural(n, "tab");

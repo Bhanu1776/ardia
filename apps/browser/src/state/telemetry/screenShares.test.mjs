@@ -156,7 +156,8 @@ test("usage.ts ends the shares when the session ends and resumes them when the q
   const usage = readFileSync(new URL("./usage.ts", import.meta.url), "utf8");
   assert.match(usage, /e\.type === "willQuit"\) \{[^}]*sessionEnding\(\)/);
   assert.match(usage, /function sessionEnding\(\) \{[^}]*endRunningScreenShares\(\)/);
-  assert.match(usage, /e\.type === "quitCancelled"\) \{[^}]*resumeScreenShares\(usePages\.getState\(\)\.pages\)/);
+  assert.match(usage, /e\.type === "quitCancelled"\) \{[^}]*resumeScreenShares\(\)/);
+  assert.match(usage, /function startUsage\(\) \{[^]*\bwatchScreenShares\(\);/);
 });
 
 test("usage.ts reopens the telemetry session before the cancelled quit's shares resume", () => {

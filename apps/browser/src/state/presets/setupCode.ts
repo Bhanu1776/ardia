@@ -47,7 +47,7 @@ export const SETTING_FIELDS: { [K in SetupSettingKey]: Field<Settings[K]> } = {
   tabLayout: { key: "t", values: ["sidebar", "top"] },
   sidebarSide: { key: "d", values: ["left", "right"] },
   addressBar: { key: "a", values: ["toolbar", "sidebar"] },
-  commandBarPlacement: { key: "c", values: ["field", "centred"] },
+  commandBarPlacement: { key: "c", values: ["field", "centred", "centredOnClick"] },
   newTabOpens: { key: "n", values: ["page", "commandBar"] },
   newTabPosition: { key: "o", values: ["top", "bottom", "nextToCurrent"] },
   newTabButtonPosition: { key: "b", values: ["top", "bottom"] },
@@ -64,7 +64,7 @@ export const SETTING_FIELDS: { [K in SetupSettingKey]: Field<Settings[K]> } = {
   bookmarksBar: { key: "v", values: ["always", "newTab", "never"] },
 };
 
-const PRESET_FIELD: Field<Preset> = { key: "p", values: ["arc", "dia", "chrome", "safari", "firefox", "zen", "brave", "edge", "fresh"] };
+const PRESET_FIELD: Field<Preset> = { key: "p", values: ["arc", "dia", "chrome", "safari", "firefox", "zen", "brave", "edge", "fresh", "helium"] };
 const COLOR_FIELD: Field<ProfileColor> = { key: "x", values: ["plum", "blue", "purple", "pink", "red", "orange", "yellow", "green", "neutral"] };
 const PINS_KEY = "f";
 

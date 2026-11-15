@@ -1,7 +1,9 @@
 import type { BrowserState } from "./store";
 import { settleNesting } from "../groups/groups";
+import { settleShownTabs } from "../groups/shownTabs";
 import { forgetClosedWindowMutes } from "../tabs/mute";
 import { forgetClosedWindowCleanUps } from "../pins/tabCleanup";
+import { forgetMovedAnchors } from "../pins/organize";
 import { livePinTables } from "../pins/pinChoices";
 import { settlePeeks } from "../peek/peek";
 import { pinnedTabsLeaveLive, settlePinHomes } from "../pins/pinHomes";
@@ -23,7 +25,9 @@ const patched =
 export const SETTLE_STEPS: readonly (readonly [string, SettleStep])[] = [
   ["forgetClosedWindowMutes", patched(forgetClosedWindowMutes)],
   ["forgetClosedWindowCleanUps", patched(forgetClosedWindowCleanUps)],
+  ["forgetMovedAnchors", patched(forgetMovedAnchors)],
   ["settleNesting", patched((s, prev) => (s.groups === prev.groups && Object.values(s.windows).every((w) => w.tabIds === prev.windows[w.id]?.tabIds) ? null : settleNesting(s)))],
+  ["settleShownTabs", patched(settleShownTabs)],
   ["livePinTables", patched(livePinTables)],
   ["settlePeeks", settlePeeks],
   ["settlePinHomes", patched(settlePinHomes)],
