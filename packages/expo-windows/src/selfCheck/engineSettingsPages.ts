@@ -9,7 +9,7 @@ const SETTLE_MS = 500;
 const CHECK_SITE = "https://ardia-settings-check.example:443";
 const PRIVATE_PROFILE = "settings-check@";
 
-type Changed = { error?: string; switched?: boolean; restored?: boolean; listed?: boolean; cleared?: boolean };
+type Changed = { error?: string; switched?: boolean; restored?: boolean; listed?: boolean; cleared?: boolean; reset?: boolean; noted?: boolean };
 
 const step = (what: string) => console.info(`[ardia windows] settings step: ${what}`);
 
@@ -55,6 +55,21 @@ answer((async () => {
   return { listed, cleared };
 })());`;
 
+const APPEARANCE_RESET = (target: string) => `${ASK}
+const at = ${target};
+answer((async () => {
+  at.chrome.send("useDefaultTheme", []);
+  at.chrome.send("recordSettingsNavCategoryClicked", []);
+  return { reset: true, noted: true };
+})());`;
+
+const BROWSING_DATA = (target: string) => `${ASK}
+const at = ${target};
+answer((async () => {
+  await ask(at, "clearBrowsingData", ["browser.clear_data.cache"], 0);
+  return { cleared: true };
+})());`;
+
 const READY = (target: string) => `post("result", JSON.stringify(!!(${target} && ${target}.document.readyState === "complete" && ${target}.cr && ${target}.cr.webUIResponse && ${target}.chrome && ${target}.chrome.send)));`;
 
 async function engineAlive(key: string, where: string) {
@@ -64,7 +79,7 @@ async function engineAlive(key: string, where: string) {
   expectEqual(await evaluate(key, 'post("result", JSON.stringify(location.href.startsWith("chrome://settings")));'), true, `the settings page still answers after the change ${where}`);
 }
 
-async function changeBoth(key: string, target: string, where: string) {
+async function changeAll(key: string, target: string, where: string) {
   await until(`the settings page ${where} has its handlers`, LOAD_MS, () => evaluate(key, READY(target)).catch(() => false), (ready) => ready === true);
   step(`setDefaultSearchEngine ${where}`);
   expectEqual((await evaluate(key, SEARCH_ENGINE(target))) as Changed, { switched: true, restored: true }, `the default search engine changes and changes back ${where}`);
@@ -72,6 +87,12 @@ async function changeBoth(key: string, target: string, where: string) {
   step(`setCategoryPermissionForPattern ${where}`);
   expectEqual((await evaluate(key, SITE_PERMISSION(target))) as Changed, { listed: true, cleared: true }, `a site's notification permission is set and reset ${where}`);
   await engineAlive(key, `of site permission ${where}`);
+  step(`useDefaultTheme and recordSettingsNavCategoryClicked ${where}`);
+  expectEqual((await evaluate(key, APPEARANCE_RESET(target))) as Changed, { reset: true, noted: true }, `the appearance is reset to the default theme and a settings category click is recorded ${where}`);
+  await engineAlive(key, `of appearance ${where}`);
+  step(`clearBrowsingData ${where}`);
+  expectEqual((await evaluate(key, BROWSING_DATA(target))) as Changed, { cleared: true }, `the last hour's cache is cleared ${where}`);
+  await engineAlive(key, `of browsing data ${where}`);
 }
 
 async function withSettings(name: string, profile: string, run: (key: string, windowId: string) => Promise<void>) {
@@ -89,11 +110,11 @@ async function withSettings(name: string, profile: string, run: (key: string, wi
 
 const settingsChecks: Check[] = [
   {
-    name: "engine settings: changing the default search engine and a site permission in a shown chrome://settings page leaves the engine running",
+    name: "engine settings: setting the default search engine, a site permission, the default theme and clearing browsing data in a shown chrome://settings page leave the engine running",
     run: () =>
       withSettings("shown", "", async (key, windowId) => {
         await show(key, windowId, LEFT);
-        await changeBoth(key, "window", "in a shown page");
+        await changeAll(key, "window", "in a shown page");
       }),
   },
   {
@@ -104,7 +125,7 @@ const settingsChecks: Check[] = [
         const url = String((await listed(key))?.url ?? "");
         step(`a private page asked for ${SETTINGS} is at ${url}`);
         if (!url.startsWith("chrome://settings")) return;
-        await changeBoth(key, "window", "in a private page");
+        await changeAll(key, "window", "in a private page");
       }),
   },
   {
@@ -115,7 +136,7 @@ const settingsChecks: Check[] = [
         leaveOffersFromUnheard(key);
         try {
           expectEqual(await evaluate(key, `window.settingsPopup = window.open("${SETTINGS}"); post("result", JSON.stringify(!!window.settingsPopup));`, true), true, "the settings page opens a settings pop-up");
-          await changeBoth(key, "window.settingsPopup", "in a pop-up");
+          await changeAll(key, "window.settingsPopup", "in a pop-up");
         } finally {
           leaveOffersFromUnheard(null);
           await evaluate(key, 'if (window.settingsPopup) window.settingsPopup.close(); post("result", "true");').catch(() => null);
@@ -128,7 +149,7 @@ const settingsChecks: Check[] = [
       withSettings("hidden", "", async (key, windowId) => {
         await show(key, windowId, LEFT);
         await hide(key, windowId);
-        await changeBoth(key, "window", "in a hidden page");
+        await changeAll(key, "window", "in a hidden page");
       }),
   },
 ];
