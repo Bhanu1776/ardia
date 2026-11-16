@@ -310,6 +310,7 @@ const NAMES: Record<string, string> = {
   extension_installed: "Extension installed",
   screen_share_started: "Screen share started",
   screen_share_ended: "Screen share ended",
+  autofill_toggle_kept: "Autofill toggle kept by an extension",
 };
 
 export async function usersUsage(range: RangeKey, signal?: AbortSignal) {
