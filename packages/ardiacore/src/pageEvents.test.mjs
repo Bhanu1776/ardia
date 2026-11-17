@@ -20,9 +20,10 @@ const pageScript = native("page_script.js");
 const messageReceivers = ["ArdiaWebView+PageMessages.mm", "ArdiaWebView+Peek.mm"].map(native);
 
 const WEBKIT_ONLY_EVENTS = new Set(["mediaFault"]);
+const WINDOWS_ENGINE_ONLY_EVENTS = new Set(["autoplayBlocked"]);
 
-test("the Chromium view emits every page event in PAGE_EVENTS except the WebKit-only ones, and nothing else", () => {
-  const expected = [...PAGE_EVENTS].filter((name) => !WEBKIT_ONLY_EVENTS.has(name));
+test("the Chromium view emits every page event in PAGE_EVENTS except the WebKit-only and Windows-engine-only ones, and nothing else", () => {
+  const expected = [...PAGE_EVENTS].filter((name) => !WEBKIT_ONLY_EVENTS.has(name) && !WINDOWS_ENGINE_ONLY_EVENTS.has(name));
   assert.deepEqual(sorted(collect(chromiumEmitters, /\bemit:@"([A-Za-z]+)"\s+payload:/g)), sorted(expected));
 });
 

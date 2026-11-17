@@ -24,10 +24,11 @@ import { useBrowser, type BrowserState } from "../browser/store";
 import { engineProfile } from "../browser/model";
 import { engineProfiles } from "../profiles/engineProfiles";
 import { shownPageId } from "../peek/peek";
-import { mainWindowFor, originalProfile } from "../windows/small";
+import { isOpenRegularWindow, mainWindowFor, originalProfile } from "../windows/small";
+import { focusedWindowOf } from "../windows/ui";
 import { goToSettingsPane, openSettings, replaceSettingsPlace, settingsBack, useSettingsNav } from "../settings/settingsWindows";
 import { closeSidePanelsOf, toggleSidePanel } from "./sidePanels";
-import { notePrivateWindowExtensionOpen, noteToolbarExtensionMove } from "../telemetry/usage";
+import { notePrivateWindowExtensionOpen, noteExtensionProfilePageOpen, noteToolbarExtensionMove } from "../telemetry/usage";
 import { extensionPageUrl, extensionProfile, extensionsProfileId, isPrivate, pageProfile, shownIn, useExtensions, windowExtensions, readyTabOf, type Anchor } from "./store";
 import { errorText } from "../../lib/errors";
 import { noteUnpackedInstall } from "../telemetry/exportCounts";
@@ -38,6 +39,7 @@ export * from "./sidePanels";
 export * from "./store";
 
 const EMPTY: InstalledExtension[] = [];
+const WEB_STORE_HOME = "https://chromewebstore.google.com/category/extensions";
 
 const loading = new Map<string, Promise<InstalledExtension[]>>();
 
@@ -84,11 +86,21 @@ export function addFromWebStore(windowId: string, urlOrId: string, profile = ext
     useExtensions.setState({ install: { windowId, profile, source: "webStore", status: "error", error: "That isn't a link to an extension in the Chrome Web Store." } });
     return;
   }
-  const url = `https://chromewebstore.google.com/detail/${id}`;
+  openInExtensionProfile(`https://chromewebstore.google.com/detail/${id}`, profile, { windowId });
+}
+
+export const openWebStoreFor = (profile: string, profileId?: string | null) => openInExtensionProfile(WEB_STORE_HOME, profile, { profileId });
+
+export function openInExtensionProfile(url: string, profile: string, { windowId, profileId }: { windowId?: string | null; profileId?: string | null } = {}) {
   const s = useBrowser.getState();
-  const target = s.windows[windowId] ? windowId : s.ui.focusOrder.find((w) => s.windows[w] && extensionProfile(s, w) === profile && s.windows[w]!.kind !== "private");
-  if (target) s.newTab(target, { url });
-  else openWindow({ profileId: s.profileOrder.find((p) => engineProfile(s, p) === profile), url });
+  const shows = (w: string | null | undefined): w is string =>
+    !!w && !!s.windows[w] && (w === windowId || isOpenRegularWindow(s.windows[w])) && extensionProfile(s, w) === profile;
+  const target = [windowId, ...s.ui.focusOrder, ...s.windowOrder].find(shows);
+  noteExtensionProfilePageOpen(target !== (windowId && s.windows[windowId] ? windowId : focusedWindowOf(s)));
+  if (target) {
+    s.newTab(target, { url });
+    focus(target);
+  } else openWindow({ profileId: profileId && engineProfile(s, profileId) === profile ? profileId : s.profileOrder.find((p) => engineProfile(s, p) === profile), url });
 }
 
 export async function loadUnpacked(windowId: string, profile = extensionProfile(useBrowser.getState(), windowId)): Promise<boolean> {
@@ -103,9 +115,13 @@ export async function loadUnpacked(windowId: string, profile = extensionProfile(
   return true;
 }
 
+const STALE_PROMPT = "This install request has closed. Open the extension's page in the Chrome Web Store and add it again.";
+
+const declinePrompt = (requestId: string) => void resolveExtensionInstallPrompt(requestId, false).catch(() => {});
+
 export function showInstallPrompt(windowId: string, prompt: ExtensionInstallPrompt) {
   const current = useExtensions.getState().install;
-  if (current?.status === "prompt") void resolveExtensionInstallPrompt(current.prompt.requestId, false);
+  if (current?.status === "prompt") declinePrompt(current.prompt.requestId);
   else cancelInstall();
   useExtensions.setState({ install: { windowId, profile: prompt.profile, source: "webStore", status: "prompt", prompt } });
 }
@@ -114,7 +130,14 @@ export async function confirmInstall() {
   const request = useExtensions.getState().install;
   if (request?.status === "prompt") {
     useExtensions.setState({ install: null });
-    await resolveExtensionInstallPrompt(request.prompt.requestId, true);
+    try {
+      await resolveExtensionInstallPrompt(request.prompt.requestId, true);
+    } catch (error) {
+      if (useExtensions.getState().install) return;
+      const stale = (error as { code?: unknown } | null)?.code === "ERR_EXTENSION_PROMPT_STALE";
+      useExtensions.setState({ install: { windowId: request.windowId, profile: request.profile, source: request.source, status: "error", error: stale ? STALE_PROMPT : errorText(error) } });
+      return;
+    }
     for (const ms of [1500, 5000]) setTimeout(() => void refreshExtensions(request.profile), ms);
     return;
   }
@@ -133,7 +156,7 @@ export async function confirmInstall() {
 export function cancelInstall() {
   const request = useExtensions.getState().install;
   if (!request) return;
-  if (request.status === "prompt") void resolveExtensionInstallPrompt(request.prompt.requestId, false);
+  if (request.status === "prompt") declinePrompt(request.prompt.requestId);
   useExtensions.setState({ install: null });
 }
 
@@ -239,8 +262,7 @@ export function showExtensionsList(profileId: string) {
   else goToSettingsPane("extensions", profileId);
 }
 export const openPinDialog = (windowId: string) => useExtensions.setState({ pinDialog: { windowId } });
-export const openWebStore = (windowId: string) =>
-  useBrowser.getState().newTab(windowId, { url: "https://chromewebstore.google.com/category/extensions" });
+export const openWebStore = (windowId: string) => openInExtensionProfile(WEB_STORE_HOME, extensionProfile(useBrowser.getState(), windowId), { windowId });
 
 export async function activateExtension(
   windowId: string,

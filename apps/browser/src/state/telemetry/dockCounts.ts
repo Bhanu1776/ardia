@@ -12,6 +12,7 @@ const NONE = {
   sidebar_screen_edge_pass_throughs: 0,
   sidebar_full_screen_peeks: 0,
   sidebar_full_screen_peek_quick_closes: 0,
+  sidebar_field_remeasures: 0,
 };
 
 export const QUICK_PEEK_CLOSE_MS = 500;
@@ -33,6 +34,8 @@ export const noteSidebarScreenEdge = (edge: ScreenEdge) => void counts[edge === 
 export const noteFullScreenPeek = () => void counts.sidebar_full_screen_peeks++;
 
 export const noteFullScreenPeekClosed = (shownMs: number) => void (shownMs < QUICK_PEEK_CLOSE_MS && counts.sidebar_full_screen_peek_quick_closes++);
+
+export const noteSidebarFieldRemeasure = () => void counts.sidebar_field_remeasures++;
 
 export function takeDockCounts() {
   const taken = counts;

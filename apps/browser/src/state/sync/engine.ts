@@ -384,7 +384,7 @@ export function startSync() {
     if (!doc.enabled) return;
     const closed = !isQuitting() && recordOpenTabCloses(doc, openTabsClosed(s, prev));
     if (closed && !cycle) save();
-    if (closed || (!cycle && (s.bookmarks !== prev.bookmarks || s.settings !== prev.settings || s.profiles !== prev.profiles || s.groups !== prev.groups))) scheduleSync();
+    if (closed || (!cycle && (s.bookmarks !== prev.bookmarks || s.settings !== prev.settings || s.profiles !== prev.profiles || s.profileOrder !== prev.profileOrder || s.groups !== prev.groups))) scheduleSync();
   });
   if (__DEV__) {
     (globalThis as { acSync?: object }).acSync = {

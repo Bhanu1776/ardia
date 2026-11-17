@@ -70,7 +70,7 @@ const EXPECTED = [
   ["state/sync/scopeAdapters.ts", ["`This Computer`"], ["This ${PLATFORM_TERMS.computerTitle}"]],
   ["components/import/steps/ChooseStep.tsx", ["were found on this computer."], []],
   ["components/settings/rows/privacyRows.ts", ["never leaves this computer.", "Kept on this computer"], []],
-  ["state/telemetry/copy.ts", ["Ctrl+Tab switcher", "Alt+Enter in the command bar", "from the taskbar or at launch"], ["Dock", "Touch ID", "⌘", "⌥", "⌃"]],
+  ["state/telemetry/copy.ts", ["Ctrl+Tab switcher", "Alt+Enter in the command bar", "from the taskbar or at launch", "the crash dump Chromium's crash handler keeps on this computer", "the signal that ended it"], ["Dock", "Touch ID", "⌘", "⌥", "⌃", "from this app's crash report", "code-signing kill", "writable memory regions"]],
   ["state/report/details.ts", ["`Linux ${app.osVersion}`, app.model"], ["`${PLATFORM_TERMS.os} ${app.osVersion}`"]],
   ["components/report/ReportPreview.tsx", ["Exactly what leaves your computer when you press Send."], ["leaves your ${PLATFORM_TERMS.computer}"]],
   ["components/report/ReportSheet.tsx", ["Contact and details stay private.", "share errors and usage for 14 days"], ["Recordings, contact and details stay private.", "share crash reports and usage"]],
@@ -116,6 +116,12 @@ test("search rows describing reworded panes read as Linux too", () => {
   assert.match(section(privacy, "passwords: [", "extensions: ["), /Touch ID|keychain/);
   assert.doesNotMatch(section(linuxCopy("components/settings/rows/privacyRows.ts"), "passwords: [", "extensions: ["), /Touch ID|keychain|Keychain|\bMac\b/);
   assert.doesNotMatch(section(linuxCopy("components/settings/rows/privacyRows.ts"), "whatsSent: {", "keywords"), /\bMacs?\b|macOS|iCloud|Keychain|keychain/);
+});
+
+test("open-tab sync telemetry describes this computer on Linux", () => {
+  const copy = linuxCopy("state/telemetry/copy.ts");
+  assert.match(copy, /how many tab changes this computer sent,/);
+  assert.doesNotMatch(copy, /\bMacs?\b/);
 });
 
 test("a shared copy change fails with 'no longer contains', and unlisted files pass through", () => {

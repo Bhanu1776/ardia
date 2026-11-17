@@ -367,6 +367,23 @@ test("the media domain keeps reaching the host for everything but casting", asyn
   assert.deepEqual(calls, ["media.selectDevice"]);
 });
 
+test("casting reaches an engine that advertises every cast call, and a partial set still shows the notice", async () => {
+  const verbs = ["showCastDialog", "startCasting", "stopCasting", "closeCastDialog", "watchCastRoutes", "terminateCastRoute"];
+  const everything = (method) => verbs.some((verb) => method === `media.${verb}`);
+  useToasts.setState({ toasts: {} });
+  for (const verb of verbs) assert.equal(linuxMediaCall(verb, JSON.stringify({ tabId: "t" }), everything), undefined, verb);
+  assert.deepEqual(useToasts.getState().toasts, {});
+  const missingRoutes = (method) => everything(method) && method !== "media.watchCastRoutes";
+  assert.equal(await linuxMediaCall("watchCastRoutes", "{}", missingRoutes), "null");
+  await assert.rejects(linuxMediaCall("startCasting", "{}", missingRoutes), (error) => error.code === "ERR_UNAVAILABLE");
+  const calls = [];
+  const host = { bootstrap: { capabilities: verbs.map((verb) => `media.${verb}`), nativeModules: {} }, call: async (name) => { calls.push(name); return "true"; }, invoke: async () => null, onEvent: () => {} };
+  const call = resolveHostModule(host, "ArdiaMedia", "call");
+  assert.equal(await call("showCastDialog", "", JSON.stringify({ tabId: "t" })), "true");
+  assert.equal(await call("watchCastRoutes", "", JSON.stringify({ profile: "" })), "true");
+  assert.deepEqual(calls, ["media.showCastDialog", "media.watchCastRoutes"]);
+});
+
 test("a page option the host has no backend for is settled here, and reaches a host that advertises it", async () => {
   const calls = [];
   const host = (capabilities) => ({ bootstrap: { profileId: "default", capabilities, nativeModules: {} }, call: async (name, profile, args) => { calls.push([name, args]); return "null"; }, invoke: async () => null, onEvent: () => {} });

@@ -44,7 +44,7 @@ final class WindowManager: NSObject, NSWindowDelegate {
   var keyWindowId: String? { id(of: NSApp.keyWindow) ?? id(of: NSApp.mainWindow) }
 
   func closeForeignKeyWindow() -> Bool {
-    guard keyWindowId == nil, let key = NSApp.keyWindow, !(key is NSPanel), key.styleMask.contains(.closable)
+    guard let key = NSApp.keyWindow, id(of: key) == nil, key.sheetParent == nil, key.styleMask.contains(.closable)
     else { return false }
     key.performClose(nil)
     return true
@@ -76,6 +76,7 @@ final class WindowManager: NSObject, NSWindowDelegate {
 
   func open(id: String, _ options: OpenWindowOptions, focus: Bool) {
     if let existing = window(id) {
+      managed[id]?.display = options.display
       if focus { existing.makeKeyAndOrderFront(nil) }
       return
     }
@@ -115,7 +116,7 @@ final class WindowManager: NSObject, NSWindowDelegate {
       observeDelegateNotifications(chromeWindow)
       if small { configureSmall(chromeWindow) }
       if small { LittleArdiaHandoff.shared.opened(id, linkFrom: options.returnTo) }
-      return show(entry, frame: frame, title: title, focus: focus, small: small, smallSize: options.size, smallPointer: options.pointer, behind: behind)
+      return show(entry, frame: frame, title: title, focus: focus, small: small, smallSize: options.size, smallPointer: options.pointer, behind: behind, display: options.display)
     }
     let window = makeWindow()
     let controller = NSViewController()
@@ -129,18 +130,19 @@ final class WindowManager: NSObject, NSWindowDelegate {
       configureSmall(window)
       LittleArdiaHandoff.shared.opened(id, linkFrom: options.returnTo)
     }
-    show(ManagedWindow(id: id, kind: kind, window: window), frame: frame, title: title, focus: focus, small: small, smallSize: options.size, smallPointer: options.pointer)
+    show(ManagedWindow(id: id, kind: kind, window: window), frame: frame, title: title, focus: focus, small: small, smallSize: options.size, smallPointer: options.pointer, display: options.display)
   }
 
   private func show(
     _ entry: ManagedWindow, frame: CGRect?, title: String, focus: Bool, small: Bool, smallSize: CGSize?, smallPointer: NSPoint?,
-    behind: String? = nil
+    behind: String? = nil, display: String? = nil
   ) {
     let window = entry.window, id = entry.id
+    entry.display = display
     if let lights = lightsCenters[id] { ChromeWindows.setTrafficLightsCenter(lights.center, trailing: lights.trailing, in: window) }
     window.title = title
     Self.identify(window, id: id, kind: entry.kind)
-    if small, frame == nil { placeSmall(window, size: smallSize, pointer: smallPointer) } else if frame != nil || !window.isVisible { place(window, frame: frame) }
+    if small, frame == nil { placeSmall(window, size: smallSize, pointer: smallPointer) } else if frame != nil || !window.isVisible { place(window, frame: frame, display: display) }
     relayoutRoot(window)
     managed[id] = entry
     if !small { lastPlaced = window }
@@ -215,6 +217,7 @@ final class WindowManager: NSObject, NSWindowDelegate {
       NotificationCenter.default.addObserver(self, selector: #selector(frameChanged(_:)), name: name, object: window)
     }
     NotificationCenter.default.addObserver(self, selector: #selector(sizeChanged(_:)), name: NSWindow.didResizeNotification, object: window)
+    NotificationCenter.default.addObserver(self, selector: #selector(screenChanged(_:)), name: NSWindow.didChangeScreenNotification, object: window)
     for name in [NSWindow.didEnterFullScreenNotification, NSWindow.didExitFullScreenNotification] {
       NotificationCenter.default.addObserver(self, selector: #selector(fullScreenChanged(_:)), name: name, object: window)
     }
@@ -327,10 +330,18 @@ final class WindowManager: NSObject, NSWindowDelegate {
     window.setFrame(NSRect(origin: origin, size: NSSize(width: width.rounded(), height: height.rounded())), display: false)
   }
 
-  private func place(_ window: NSWindow, frame: CGRect?) {
+  func moveToSavedDisplay(_ id: String) {
+    guard let entry = managed[id], !entry.window.styleMask.contains(.fullScreen),
+          let screen = ArdiaDisplayIdentity.screen(withIdentifier: entry.display), entry.window.screen !== screen
+    else { return }
+    entry.window.setFrame(ArdiaDisplayIdentity.frame(entry.window.frame, on: screen), display: false)
+  }
+
+  private func place(_ window: NSWindow, frame: CGRect?, display: String? = nil) {
     if let frame {
-      window.setFrame(frame, display: false)
-      if let screen = window.screen ?? NSScreen.main {
+      let saved = ArdiaDisplayIdentity.screen(withIdentifier: display)
+      window.setFrame(saved.map { ArdiaDisplayIdentity.frame(frame, on: $0) } ?? frame, display: false)
+      if let screen = saved ?? window.screen ?? NSScreen.main {
         window.setFrame(window.constrainFrameRect(window.frame, to: screen), display: false)
       }
     } else if let source = [NSApp.keyWindow, NSApp.mainWindow, lastPlaced].compactMap({ $0 }).first(where: { isMainWindow($0) })
@@ -469,9 +480,19 @@ final class WindowManager: NSObject, NSWindowDelegate {
     if entered { fullScreen.entered(id) }
   }
 
+  @objc private func screenChanged(_ notification: Notification) {
+    guard let window = notification.object as? NSWindow, window.styleMask.contains(.fullScreen), let id = id(of: window),
+          managed[id]?.isFullScreen == true, isMainWindow(window)
+    else { return }
+    sendFullScreen(window, id: id, on: true)
+  }
+
   private func sendFullScreen(_ window: NSWindow, id: String, on: Bool) {
     guard isMainWindow(window) else { return }
-    ShellEvents.send(.window, ["type": "fullScreen", "id": id, "on": on && !ArdiaChromeWindowHost.windowFullScreenIs(forPage: window)])
+    let on = on && !ArdiaChromeWindowHost.windowFullScreenIs(forPage: window)
+    var body: [String: Any] = ["type": "fullScreen", "id": id, "on": on]
+    if on, let display = ArdiaDisplayIdentity.identifier(of: window.screen) { body["display"] = display }
+    ShellEvents.send(.window, body)
   }
 
   private static let resizeReportDelay: TimeInterval = 0.25

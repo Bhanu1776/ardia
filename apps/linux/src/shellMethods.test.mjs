@@ -174,7 +174,8 @@ test("the updater, location and system signals reach an engine that advertises t
 });
 
 test("the Mac-only methods of #305 answer on Linux with a truthful value or ERR_UNAVAILABLE, never as an unsupported host method", async () => {
-  const host = olderEngine(...NOTIFICATION_CALLS, ...PORTED_FROM_1998);
+  assert.ok(advertised.includes("crash.dumps"));
+  const host = olderEngine(...NOTIFICATION_CALLS, ...PORTED_FROM_1998, "crash.dumps");
   for (const name of FORMERLY_TRACKED_IN_305) {
     const [module, method] = name.split(".");
     const resolved = resolveHostModule(host, module, method);
