@@ -125,6 +125,7 @@ export class DragTargeting extends DragGeometry {
     const resolved = resolveDropNow(dragSource, aim.spot);
     const drop: Drop = resolved.type !== "none" && aim.sequence ? { ...resolved, sequence: aim.sequence } : resolved;
     const dropped = drop.type !== "none";
+    if (dropped) session.targeted = true;
     const gapKey = dropped ? aim.gapKey : null;
     const pitch = aim.pitch ?? rowPitch;
     const into = dropped ? (aim.into ?? null) : null;

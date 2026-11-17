@@ -428,9 +428,11 @@ test("tab presses count clicks, drags turned into clicks, drags and presses that
   presses.noteRangeSelect(true);
   presses.noteRangeSelect(false);
   presses.notePagePressRefused();
+  presses.noteDragUntargeted();
   presses.emitTabPresses();
   await client.saveQueueNow();
   const props = events("tab_presses").at(-1).properties;
+  assert.equal(props.drags_untargeted, 1);
   assert.deepEqual([props.range_selects, props.range_from_shown], [2, 1]);
   assert.deepEqual([props.repeat_presses, props.repeat_on_new_tab, props.repeat_gap_ms_p50, props.repeat_landed_on], [1, 1, 600, "RCTView<Surface"]);
   assert.equal(props.lost_releases, 2);
@@ -493,7 +495,7 @@ test("turning sharing off forgets pending presses and samples, so they never go 
   presses.emitTabPresses();
   await client.saveQueueNow();
   assert.equal(events("tab_presses").length, 0);
-  assert.deepEqual(presses.devTabPresses(), { presses: 0, down_switches: 0, clicks: 0, drag_clicks: 0, drags: 0, unanswered: 0, range_selects: 0, range_from_shown: 0, page_refused: 0, pending: false, toPageClick: 0, held: 0 });
+  assert.deepEqual(presses.devTabPresses(), { presses: 0, down_switches: 0, clicks: 0, drag_clicks: 0, drags: 0, drags_untargeted: 0, unanswered: 0, range_selects: 0, range_from_shown: 0, page_refused: 0, pending: false, toPageClick: 0, held: 0 });
 });
 
 test("with sharing off no context is saved, and tab presses stay in the local copy, never queued", async () => {
