@@ -6,7 +6,7 @@ import { movingTabsFrom } from "../../state/sidebar/current";
 import type { TabPlacement } from "../../state/pins/placing";
 import { SLIDE } from "../tabstrip/tokens";
 import { beginTabDrag, cancelTabDrag, endTabDrag, setDragPicture, tabDragOutside, updateTabDrag } from "../../state/drag/tabDrag";
-import { noteDragUntargeted } from "../../state/telemetry/tabPresses";
+import { noteDragWithoutDrop } from "../../state/telemetry/tabPresses";
 import { arrangeLive } from "../../state/sidebar/pinnedOrder";
 import { suppressHover } from "../../state/sidebar/hover";
 import { closeFolderPanel } from "../../state/sidebar/tileFolderUi";
@@ -133,7 +133,7 @@ export class DragController extends DragTargeting {
     const session = this.session;
     if (session?.external) return void this.finishExternal(false);
     if (!session?.sources.length) return endHeldTabPress([], null);
-    const { sources, drop, ghost, measured, into, targeted } = session;
+    const { sources, drop, ghost, measured, into } = session;
     const outside = tabDragOutside();
     const splitDrop = commit ? endTabDrag() : (cancelTabDrag(), false);
     const folded = dragMarksOf(this.marks).folded;
@@ -147,7 +147,7 @@ export class DragController extends DragTargeting {
         : null;
     const dragged = sources.flatMap((i) => i.tabIds);
     const places = dragged.map(tabPlace).join();
-    if (commit && !splitDrop && measured && !targeted && !outside) noteDragUntargeted();
+    if (commit && !splitDrop && measured && !outside && drop.type === "none") noteDragWithoutDrop();
     if (commit && !splitDrop && measured && sources.length) {
       dropTabs(dragged, drop);
       if (drop.sequence) arrangeLive(drop.sequence);

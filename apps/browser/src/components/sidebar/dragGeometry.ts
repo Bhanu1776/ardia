@@ -21,7 +21,6 @@ export type DragSession = {
   into: string | null;
   dropKey: string;
   drop: Drop;
-  targeted: boolean;
   gridBase: Frame | null;
   gridGrowth: number;
   external: number;
@@ -44,7 +43,6 @@ export const newDragSession = (sources: Item[], pointer: { x: number; y: number 
   into: null,
   dropKey: "",
   drop: NO_DROP,
-  targeted: false,
   gridBase: null,
   gridGrowth: 0,
   external: 0,
