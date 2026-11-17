@@ -48,6 +48,7 @@ const SITE_PERMISSION = (target: string) => `${ASK}
 const at = ${target};
 const named = (list) => JSON.stringify(list).includes("ardia-settings-check.example");
 answer((async () => {
+  await ask(at, "getExceptionList", "notifications");
   at.chrome.send("setCategoryPermissionForPattern", ["${CHECK_SITE}", "", "notifications", "block", false]);
   const listed = named(await ask(at, "getExceptionList", "notifications"));
   at.chrome.send("resetCategoryPermissionForPattern", ["${CHECK_SITE}", "", "notifications", false]);
@@ -66,6 +67,7 @@ answer((async () => {
 const BROWSING_DATA = (target: string) => `${ASK}
 const at = ${target};
 answer((async () => {
+  await ask(at, "initializeClearBrowsingData");
   await ask(at, "clearBrowsingData", ["browser.clear_data.cache"], 0);
   return { cleared: true };
 })());`;
