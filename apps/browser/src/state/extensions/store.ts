@@ -97,6 +97,12 @@ export function useExtensionList(profile: string): InstalledExtension[] {
   return useExtensions((e) => e.lists[profile] ?? EMPTY);
 }
 
+export const tabProfile = (tabId: string) => {
+  const s = useBrowser.getState();
+  const tab = s.tabs[tabId];
+  return tab ? engineProfile(s, tab.profileId) : "";
+};
+
 export const readyTabOf = (tabId: string | undefined): string | undefined => (isTabReady(tabId) ? tabId : undefined);
 
 export const shownReadyTab = (windowId: string) => readyTabOf(shownPageId(useBrowser.getState(), windowId));
