@@ -38,6 +38,9 @@ NS_ASSUME_NONNULL_BEGIN
 + (void)keepInterfaceContentSizeOfWindow:(NSWindow *)window NS_SWIFT_NAME(keepInterfaceContentSize(of:));
 
 + (void)showProfile:(NSString *)profile inWindow:(NSWindow *)window;
++ (void)showProfile:(NSString *)profile
+           inWindow:(NSWindow *)window
+             report:(nullable void (^)(BOOL profileLoaded, double activeMs, double swapMs, BOOL heldTimedOut))report;
 + (void)prepareProfiles:(NSArray<NSString *> *)profiles forWindow:(NSWindow *)window;
 @property(class, nonatomic, copy, nullable) void (^swappedHandler)(NSWindow *from, NSWindow *to);
 
@@ -55,6 +58,13 @@ NSView *_Nullable ArdiaWindowRootView(NSWindow *_Nullable window);
 NSValue *_Nullable ArdiaTrafficLightsCenter(NSWindow *_Nullable window);
 BOOL ArdiaTrafficLightsTrailing(NSWindow *_Nullable window);
 FOUNDATION_EXPORT BOOL ArdiaPerformReservedKey(NSEvent *event);
+
+@interface ArdiaChromeWindowHost (LittleFit)
+
++ (nullable NSValue *)littleFrameFittingLandingOf:(NSWindow *)window
+                                      minimumSize:(NSSize)minimum NS_SWIFT_NAME(littleFrameFittingLanding(of:minimumSize:));
+
+@end
 
 @interface ArdiaChromeWindowHost (Dev)
 
