@@ -46,13 +46,16 @@ function sidebar(shell) {
   const drag = async (from, to, steps) => {
     await shell.session.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: from.x, y: from.y, buttons: 0 });
     await button("mousePressed", from.x, from.y);
-    await pause(60);
-    for (let i = 1; i <= steps; i++) {
-      await button("mouseMoved", from.x + ((to.x - from.x) * i) / steps, from.y + ((to.y - from.y) * i) / steps);
-      await pause(16);
+    try {
+      await pause(60);
+      for (let i = 1; i <= steps; i++) {
+        await button("mouseMoved", from.x + ((to.x - from.x) * i) / steps, from.y + ((to.y - from.y) * i) / steps);
+        await pause(16);
+      }
+      await pause(250);
+    } finally {
+      await button("mouseReleased", to.x, to.y);
     }
-    await pause(250);
-    await button("mouseReleased", to.x, to.y);
     await pause(900);
   };
   const groupCount = () => shell.state("return Object.keys(s.groups ?? {}).length");
