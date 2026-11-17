@@ -93,7 +93,7 @@ export const WHATS_SENT: { title: string; items: string[] }[] = [
       "How many page loads showed in the address field or as the loading pill, how many times the pill stayed over 10 seconds, and how many loads ended before either showed, summed up once an hour. Never which page",
       "How many times the New Tab bar opened on its own over an empty window at launch, summed up once an hour",
       "How many times ⌘T kept a New Tab bar that had opened on its own (in a new window or after closing the last tab) instead of closing it, summed up once an hour",
-      "How many addresses and searches you opened from the address bar, the New Tab page or the New Tab bar, and how many of those pages took the keyboard right away, so a keyboard-navigation extension's keys work without a click first, summed up once an hour. Never which pages",
+      "How many addresses and searches you opened from the address bar, the New Tab page or the New Tab bar, and how many of those pages took the keyboard right away, so a keyboard-navigation extension's keys work without a click first, and the same for pages a link opened in a new tab in front, summed up once an hour. Never which pages",
       "How many times switching from a New Tab to a page kept the New Tab up behind it while the page drew, and how many switches went to a page on WebKit, which shows at once without it, summed up once an hour. Never which page",
       "With address bar speed: how many search suggestion requests your search engine answered, refused as unusual traffic, or failed, summed up once an hour. Never what you typed or which engine",
       "How many times you switched the update channel, and whether the check that follows offered an update, found you up to date or failed, and on Linux how many update checks ran by hand or by themselves, how many failed or found a newer release, how many times a release page was opened from one, and how many times the switch file refreshed or failed to, how many launches ran without Chromium's sandbox because Ardia was started with --no-sandbox, and how many times your login password confirmed it was you where polkit couldn't ask, was wrong, or was cancelled, summed up once an hour. Never which version",
@@ -162,6 +162,7 @@ export const WHATS_SENT: { title: string; items: string[] }[] = [
       "Bringing your last window back from the Dock or at launch: how many tabs came back and how long it was closed, in rough ranges, and whether a pinned tab was showing",
       "When you turn Offer to save and fill passwords, Save and fill addresses or Save and fill credit cards on or off and an extension keeps it as it was: which of the three it was. Never which extension",
       "When you import passwords from another browser or from a CSV file: how many passwords Ardia tried to save, how many it saved, how many the password store refused (invalid, or already saved), how many it didn't store in time, and how many failed for another reason, once per import. Never which sites, usernames or passwords",
+      "How many times the pointer was hidden by a page, or still showed a page's own pointer (like a text cursor), over Ardia's sidebar, toolbar or panels and Ardia put the arrow back, and how many of those had hidden it, summed up once an hour. Never which page",
     ],
   },
   {
