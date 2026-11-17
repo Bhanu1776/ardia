@@ -28,7 +28,7 @@ import { isOpenRegularWindow, mainWindowFor, originalProfile } from "../windows/
 import { focusedWindowOf } from "../windows/ui";
 import { goToSettingsPane, openSettings, replaceSettingsPlace, settingsBack, useSettingsNav } from "../settings/settingsWindows";
 import { closeSidePanelsOf, toggleSidePanel } from "./sidePanels";
-import { notePrivateWindowExtensionOpen, noteExtensionProfilePageOpen, noteToolbarExtensionMove } from "../telemetry/usage";
+import { notePrivateWindowExtensionOpen, noteExtensionInstallPromptStale, noteExtensionProfilePageOpen, noteToolbarExtensionMove } from "../telemetry/usage";
 import { extensionPageUrl, extensionProfile, extensionsProfileId, isPrivate, pageProfile, shownIn, useExtensions, windowExtensions, readyTabOf, type Anchor } from "./store";
 import { errorText } from "../../lib/errors";
 import { noteUnpackedInstall } from "../telemetry/exportCounts";
@@ -117,11 +117,11 @@ export async function loadUnpacked(windowId: string, profile = extensionProfile(
 
 const STALE_PROMPT = "This install request has closed. Open the extension's page in the Chrome Web Store and add it again.";
 
-const declinePrompt = (requestId: string) => void resolveExtensionInstallPrompt(requestId, false).catch(() => {});
+const declinePrompt = (prompt: ExtensionInstallPrompt) => void resolveExtensionInstallPrompt(prompt, false).catch(() => {});
 
 export function showInstallPrompt(windowId: string, prompt: ExtensionInstallPrompt) {
   const current = useExtensions.getState().install;
-  if (current?.status === "prompt") declinePrompt(current.prompt.requestId);
+  if (current?.status === "prompt") declinePrompt(current.prompt);
   else cancelInstall();
   useExtensions.setState({ install: { windowId, profile: prompt.profile, source: "webStore", status: "prompt", prompt } });
 }
@@ -131,10 +131,11 @@ export async function confirmInstall() {
   if (request?.status === "prompt") {
     useExtensions.setState({ install: null });
     try {
-      await resolveExtensionInstallPrompt(request.prompt.requestId, true);
+      await resolveExtensionInstallPrompt(request.prompt, true);
     } catch (error) {
-      if (useExtensions.getState().install) return;
       const stale = (error as { code?: unknown } | null)?.code === "ERR_EXTENSION_PROMPT_STALE";
+      if (stale) noteExtensionInstallPromptStale();
+      if (useExtensions.getState().install) return;
       useExtensions.setState({ install: { windowId: request.windowId, profile: request.profile, source: request.source, status: "error", error: stale ? STALE_PROMPT : errorText(error) } });
       return;
     }
@@ -156,7 +157,7 @@ export async function confirmInstall() {
 export function cancelInstall() {
   const request = useExtensions.getState().install;
   if (!request) return;
-  if (request.status === "prompt") declinePrompt(request.prompt.requestId);
+  if (request.status === "prompt") declinePrompt(request.prompt);
   useExtensions.setState({ install: null });
 }
 

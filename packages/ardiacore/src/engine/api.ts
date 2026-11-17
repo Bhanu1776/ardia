@@ -120,7 +120,7 @@ export type EngineCalls = {
   "extensions.reload": [Profile & { id: string }, { ok: true }];
   "extensions.configure": [Profile & { id: string; options: Record<string, unknown> }, { ok: true }];
   "extensions.chooseFolder": [{}, string | null];
-  "extensions.resolveInstallPrompt": [{ requestId: string; accepted: boolean }, null];
+  "extensions.resolveInstallPrompt": [Profile & { requestId: string; accepted: boolean }, null];
   "extensions.actionStates": [{ tabId: string; ids: string[] }, Record<string, ActionState>];
   "extensions.sidePanelUrl": [{ tabId: string; extensionId: string }, string | null];
   "extensions.watchActions": [Profile, Done];

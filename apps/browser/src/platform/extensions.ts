@@ -50,7 +50,8 @@ export const configureExtension = async (
 export const extensionActionStates = async (tabId: string, ids: string[]): Promise<Record<string, ActionState>> =>
   ids.length ? call("extensions.actionStates", { tabId, ids }) : {};
 export const watchExtensionActions = (profile: string) => call("extensions.watchActions", { profile });
-export const resolveExtensionInstallPrompt = (requestId: string, accepted: boolean) => call("extensions.resolveInstallPrompt", { requestId, accepted });
+export const resolveExtensionInstallPrompt = ({ requestId, profile }: Pick<ExtensionInstallPrompt, "requestId" | "profile">, accepted: boolean) =>
+  call("extensions.resolveInstallPrompt", { profile, requestId, accepted });
 export const extensionSidePanelUrl = (tabId: string, extensionId: string) => call("extensions.sidePanelUrl", { tabId, extensionId });
 export const extensionsSyncState = (profile: string) => call("extensions.syncState", { profile });
 export const extensionsLoadHealth = (profile: string) => call("extensions.loadHealth", { profile });

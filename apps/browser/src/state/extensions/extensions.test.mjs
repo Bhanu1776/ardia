@@ -261,6 +261,28 @@ test("Add on an install prompt the engine no longer holds says so in the dialog,
   }
 });
 
+test("Add and Cancel answer an install prompt in the profile that asked, not the window's own", async () => {
+  const { showInstallPrompt, confirmInstall, cancelInstall } = await import("./actions.ts");
+  const { w } = setup();
+  const answers = [];
+  native.extensionAnswers.resolveInstallPrompt = async (requestId, accepted, profile) => {
+    answers.push([requestId, accepted, profile]);
+    return null;
+  };
+  const prompt = { requestId: "install1", profile: "aurum", id: "abc", name: "Ext", version: "1", type: "install", icon: null, permissions: [], tabId: null };
+  try {
+    showInstallPrompt(w, prompt);
+    await confirmInstall();
+    showInstallPrompt(w, { ...prompt, requestId: "install2", profile: "" });
+    cancelInstall();
+    await new Promise((r) => setImmediate(r));
+    assert.deepEqual(answers, [["install1", true, "aurum"], ["install2", false, ""]]);
+    assert.equal(E().install, null);
+  } finally {
+    native.extensionAnswers.resolveInstallPrompt = async () => null;
+  }
+});
+
 test("a failed Add doesn't replace an install prompt that arrived while it was waiting", async () => {
   const { showInstallPrompt, confirmInstall } = await import("./actions.ts");
   const { ArdiaError } = await import("@ardia/core");
