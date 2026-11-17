@@ -370,10 +370,10 @@ export function startClient(continuing = false): ClientSession {
   return { previous, updatedFrom, ...last };
 }
 
-let endedSession: { lastQuitAt: number | null } | null = null;
+let endedSession: Pick<ReturnType<typeof saved>, "lastQuitAt"> | null = null;
 
 export function endSession() {
-  endedSession = { lastQuitAt: saved().lastQuitAt };
+  endedSession ??= { lastQuitAt: saved().lastQuitAt };
   save({ sessionOpen: false, sessionId: null, lastQuitAt: Date.now() });
   if (saved().sharing) persistQueue(true);
   try {

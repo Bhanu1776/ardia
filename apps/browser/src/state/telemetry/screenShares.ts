@@ -5,7 +5,7 @@ const ANSWER_MATCH_MS = 15_000;
 
 export type ScreenShareVia = "sheet" | "tab" | "system_picker";
 
-type Answer = { via: "sheet" | "tab"; at: number };
+type Answer = { via: Exclude<ScreenShareVia, "system_picker">; at: number };
 type Running = { via: ScreenShareVia; startedAt: number };
 
 let answers = new Map<string, Answer>();

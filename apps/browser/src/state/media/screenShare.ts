@@ -110,7 +110,7 @@ export function askForScreenRecording() {
 
 const sourceKind = (sourceId: string) => (sourceId.startsWith("screen:") ? "screen" : sourceId.startsWith("window:") ? "window" : "tab");
 
-export function answerDisplayMedia(tabId: string, sourceId: string | null, audio = false, via: "sheet" | "tab" = "sheet") {
+export function answerDisplayMedia(tabId: string, sourceId: string | null, audio = false, via: Parameters<typeof noteDisplayAnswer>[1] = "sheet") {
   const request = useMedia.getState().displayRequests[tabId];
   if (!request) return;
   if (sourceId) {

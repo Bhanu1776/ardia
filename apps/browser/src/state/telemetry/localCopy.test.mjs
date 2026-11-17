@@ -138,7 +138,9 @@ test("quitting clears the session id and writes the local copy synchronously", (
 });
 
 test("a cancelled quit reopens the saved session, so a later crash reads as unclean", () => {
+  client.reopenSession();
   const quitAtBefore = state().lastQuitAt;
+  client.endSession();
   client.endSession();
   assert.equal(state().sessionOpen, false);
   assert.equal(state().sessionId, null);
